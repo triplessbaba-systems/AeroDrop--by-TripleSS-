@@ -1,67 +1,49 @@
-# AeroDrop 🚀 - Yerel Ağ (LAN) P2P Dosya & Pano Transfer İstasyonu
+# AeroDrop
 
-AeroDrop, aynı Wi-Fi veya Ethernet ağına bağlı bilgisayarlar ve mobil cihazlar (iPhone, Android, Mac, Windows) arasında **buluta yükleme yapmadan**, **internet kotası harcamadan** ve **alıcı cihaza hiçbir uygulama kurdurmadan** çalışan, uçtan uca şifreli yerel dosya ve pano aktarım istasyonudur.
+Bilgisayardan telefona ya da yerel ağdaki iki cihaz arasında dosya atarken WhatsApp'tan kendine mesaj atmakla, Google Drive'a yükleyip beklemekle veya karşı tarafa uygulama kurdurmakla uğraşmamak için geliştirilmiş yerel dosya ve pano transfer aracı.
 
----
-
-## ⚡ Temel Özellikler
-
-* **Sıfır Kurulum & Dinamik QR Kod:** Alıcı telefona hiçbir uygulama (APK / App Store) yükletmeniz gerekmez. Ekrana gelen QR kodu telefonun kamerasıyla okutmak yeterlidir.
-* **Uçtan Uca Sıfır-Bilgi Şifreleme (E2E AES-256-GCM / ECDH P-256):** Tüm dosya parçaları ve pano verileri istemcide türetilen anahtarla şifrelenir; evdeki modem veya ağdaki üçüncü taraflar içeriği göremez.
-* **Saf İkili (Raw Binary) Akış:** Base64 yerine doğrudan `ArrayBuffer` üzerinden çalışır. 1-2 GB'lık 4K videolarda telefonlarda bellek şişmesi (RAM crash) yaşanmaz.
-* **Mobil Ekran Koruma (`navigator.wakeLock`):** Aktarım boyunca mobil cihaz ekranının kararmasını ve iOS'un arka planda bağlantıyı dondurmasını engeller.
-* **Çoklu Dosya & Klasör Desteği:** Tek tek dosya seçmek yerine birden çok dosya veya tüm bir klasör seçilebilir.
-* **Toplu ZIP Paketleme:** Alınan birden fazla dosya tek tıkla tek bir `.zip` arşivi olarak indirilebilir.
-* **Sentezlenmiş Ses ve Masaüstü Bildirimleri:** Web Audio API ile sıfır harici varlıkla gelen transfer ve tamamlanma melodileri çalar, sekme arka plandayken bildirim balonu açar.
-* **Medya Önizleme (Lightbox):** Aktarılan fotoğraflar, videolar ve sesler uygulama içinden anında tam ekran oynatılabilir.
+AirDrop mantığıyla çalışır ancak platform bağımsızdır (Windows, iOS, Android, Linux, macOS). Karşı tarafın herhangi bir şey yüklemesine gerek yoktur; telefon kamerasını ekrandaki QR koda tutması yeterlidir.
 
 ---
 
-## 📦 Kurulum ve Çalıştırma
+## Neden Yapıldı?
 
-### 1. Hazır Binary (.exe) ile Çalıştırma (Node.js Gerektirmez)
-GitHub Releases sekmesinden `AeroDrop.exe` dosyasını indirin ve çift tıklayın. Sunucu otomatik başlar ve varsayılan tarayıcınızda açılır.
+* **Uygulama Kurulumu Yok:** Telefona APK, App Store uygulaması veya sürücü yükletmez. Cihazın kendi tarayıcısı (Safari / Chrome) üzerinden çalışır.
+* **İnternet Kotası Harcamaz:** Dosyalar internete çıkmaz. Evdeki modemin veya kablolu ağın yerel bant genişliği üzerinden (30-60 MB/s) doğrudan akar.
+* **Büyük Dosyalarda Çökmez:** Birçok web tabanlı transfer aracı dosyayı Base64'e çevirdiği için mobil tarayıcıların belleğini şişirir ve 500 MB üzeri videolarda sekmeyi kapatır. AeroDrop doğrudan `ArrayBuffer` ikili akışı (binary stream) kullanır, RAM tüketimi dosya boyutundan bağımsız 15-20 MB civarında sabit kalır.
+* **Ekran Kapanma Koruması:** `navigator.wakeLock` API'si ile dosya inerken telefonun ekranının kararıp bağlantının donmasını (özellikle iOS Safari'nin arka plan kısıtını) engeller.
+* **Uçtan Uca Şifreli:** WebCrypto (ECDH + AES-256-GCM) ile yerel ağdaki diğer cihazların paketleri dinlemesini önler.
+* **Pano (Clipboard) Senkronizasyonu:** Bilgisayarda kopyalanan bir metin, link veya şifre tek tıkla telefonun ekranına düşer.
 
-### 2. Kaynak Koddan Geliştirici Modunda Çalıştırma
+---
+
+## Hızlı Başlangıç
+
+### 1. Hazır Sürüm (Node.js Gerektirmez)
+Releases bölümünden `AeroDrop.exe` dosyasını indirin ve çift tıklayın. Sunucu arka planda başlar ve varsayılan tarayıcınızda açılır.
+
+### 2. Kaynak Koddan Çalıştırma
 ```bash
-# Bağımlılıkları yükleyin
+git clone https://github.com/triplessbaba-systems/AeroDrop--by-TripleSS-.git
+cd AeroDrop--by-TripleSS-
 npm install
-
-# Derleyin ve başlatın
 npm run build
 npm start
 ```
-* **Bilgisayarda:** [http://localhost:3000](http://localhost:3000)
-* **Telefonda:** Ekranda beliren QR kodu okutun veya telefon tarayıcısına yerel IP adresini (ör: `http://192.168.1.5:3000`) yazın.
+
+Tarayıcıdan `http://localhost:3000` adresine gidin. Telefondan bağlanmak için ekrandaki QR kodu okutun.
 
 ---
 
-## 🏗️ Mimari Şema
+## Yapı ve Protokol
 
-```
-┌─────────────────────────────────────────────────────────────┐
-│                    Kullanıcı Arayüzü                        │
-│  [Masaüstü Radar Paneli]  ◄──►  [Mobil Telefon Tarayıcısı]  │
-└──────────────────────────────┬──────────────────────────────┘
-                               │ Binary WebSocket & HTTP Range
-┌──────────────────────────────▼──────────────────────────────┐
-│                 Uygulama & Güvenlik Katmanı                 │
-│  - WebCrypto (ECDH P-256 + AES-256-GCM)                    │
-│  - navigator.wakeLock Mobil Ekran Koruması                  │
-│  - Web Audio Sentetik Bildirim Sentezleyicisi               │
-│  - IndexedDB Parça Tamponu & Duraklat/Devam Et              │
-│  - Yerel PKZIP Binary Arşivleyici                           │
-└──────────────────────────────┬──────────────────────────────┘
-                               │
-┌──────────────────────────────▼──────────────────────────────┐
-│                    Altyapı ve Veri Akışı                    │
-│  - Node.js / caxa Standalone Windows Executable             │
-│  - 0-Copy Binary Buffer Stream (Zero RAM Blowup)           │
-│  - Yerel Ağ IP Otomatik Keşfi (os.networkInterfaces)       │
-└─────────────────────────────────────────────────────────────┘
-```
+* **Arayüz:** React, TypeScript, Vite, Vanilla CSS (koyu tema, sıfır harici UI kütüphanesi).
+* **Sunucu & Sinyalleşme:** Node.js, Express, WebSocket (`ws`).
+* **Veri Akışı:** 40-byte başlıklı raw binary chunk iletimi.
+* **İkili ZIP:** İstemci tarafında çalışan sıfır-bağımlılık PKZIP motoru.
 
 ---
 
-## 📄 Lisans
-MIT License - Özgürce kullanılabilir, dağıtılabilir ve geliştirilebilir.
+## Lisans
+
+MIT
